@@ -9,7 +9,7 @@
   const LS_MODEL = "planning-gemini-model";
   const LS_GARDE_REMIND = "planning-garde-remind";
   const LS_EXPORTED = "planning-exported-v1";
-  const APP_VERSION = "6";
+  const APP_VERSION = "7";
   const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
   const DEFAULT_TYPES = [
@@ -144,7 +144,10 @@
         const s0 = mins(e.start);
         let e0 = e.end ? mins(e.end) : Math.min(s0 + 60, 1440);
         if (e.end && e0 <= s0) e0 += 1440; // passe minuit
-        const x1 = off0 + s0 / 1440, x2 = off0 + e0 / 1440;
+        // Échelle visuelle (pas horaire) : une garde qui passe minuit va du milieu de la case du soir
+        // au milieu de la case du lendemain ; une garde dans la journée remplit sa case.
+        const x1 = e0 > 1440 ? off0 + 0.52 : off0 + 0.06;
+        const x2 = e0 > 1440 ? off0 + 1.48 : off0 + 0.94;
         if (x2 <= 0 || x1 >= 7) continue;
         const t = getType(e.type);
         segs.push({ x1: Math.max(0, x1), x2: Math.min(7, x2), cutL: x1 < 0, cutR: x2 > 7, color: t.color,
