@@ -9,7 +9,7 @@
   const LS_MODEL = "planning-gemini-model";
   const LS_GARDE_REMIND = "planning-garde-remind";
   const LS_EXPORTED = "planning-exported-v1";
-  const APP_VERSION = "4";
+  const APP_VERSION = "5";
   const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
   const DEFAULT_TYPES = [
@@ -129,31 +129,63 @@
     $("mtitle").textContent = fmtMonth.format(view);
     const off = (view.getDay() + 6) % 7;
     const start = new Date(view); start.setDate(1 - off);
+    const mins = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+    // Événements avec horaire -> segments continus (en jours depuis le lundi de la semaine)
+    const timed = events.filter((e) => !SYS_TYPES[e.type] && e.start);
     let html = "";
-    for (let i = 0; i < 42; i++) {
-      const d = new Date(start); d.setDate(start.getDate() + i);
-      if (i >= 35 && d.getMonth() !== view.getMonth()) break;
-      const k = ymd(d), wd = d.getDay();
-      let c = "cell";
-      if (d.getMonth() !== view.getMonth()) c += " out";
-      if (wd === 0 || wd === 6) c += " we";
-      if (isGarde(d)) c += " g";
-      if (d.getTime() === today.getTime()) c += " today";
-      if (k === selected) c += " sel";
-      const tags = events
-        .filter((e) => e.date === k && !SYS_TYPES[e.type])
-        .map((e) => {
-          const t = getType(e.type);
-          const txt = t.short && t.short !== "•" ? t.short : (e.label || t.label).slice(0, 6);
-          return `<span class="tag" style="background:${esc(t.color)}">${esc(txt)}</span>`;
-        }).join("");
-      const prevK = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
-      const contTags = events.filter((e) => e.date === prevK && overnight(e) && !SYS_TYPES[e.type] && e.end !== "00:00").map((e) => {
-        const [hh, mm] = e.end.split(":");
-        return `<span class="tag cont" style="background:${esc(getType(e.type).color)}">→${Number(hh)}h${mm !== "00" ? mm : ""}</span>`;
+    for (let w = 0; w < 6; w++) {
+      const ws = new Date(start); ws.setDate(start.getDate() + w * 7);
+      if (w >= 5 && ws.getMonth() !== view.getMonth()) break;
+      const wsUTC = Date.UTC(ws.getFullYear(), ws.getMonth(), ws.getDate());
+      const segs = [];
+      for (const e of timed) {
+        const d = parse(e.date);
+        const off0 = Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - wsUTC) / 864e5);
+        const s0 = mins(e.start);
+        let e0 = e.end ? mins(e.end) : Math.min(s0 + 60, 1440);
+        if (e.end && e0 <= s0) e0 += 1440; // passe minuit
+        const x1 = off0 + s0 / 1440, x2 = off0 + e0 / 1440;
+        if (x2 <= 0 || x1 >= 7) continue;
+        const t = getType(e.type);
+        segs.push({ x1: Math.max(0, x1), x2: Math.min(7, x2), cutL: x1 < 0, cutR: x2 > 7, color: t.color,
+          txt: t.short && t.short !== "•" ? t.short : (e.label || t.label).slice(0, 8), title: (e.label || t.label) + " " + e.start + (e.end ? "–" + e.end : "") });
+      }
+      segs.sort((p, q) => p.x1 - q.x1 || q.x2 - p.x2);
+      const lanes = [];
+      for (const sg of segs) {
+        let l = lanes.findIndex((end) => end <= sg.x1 + 1e-6);
+        if (l < 0) { l = lanes.length; lanes.push(0); }
+        lanes[l] = sg.x2; sg.lane = l;
+      }
+      const nL = lanes.length;
+      const pos = (x) => { const col = Math.min(6, Math.floor(x)); return `calc((100% - 24px) * ${(x / 7).toFixed(5)} + ${col * 4}px)`; };
+      const bars = segs.map((sg) => {
+        const c1 = Math.min(6, Math.floor(sg.x1)), c2 = Math.min(6, Math.floor(sg.x2 - 1e-6));
+        const left = pos(sg.x1);
+        const width = `calc((100% - 24px) * ${((sg.x2 - sg.x1) / 7).toFixed(5)} + ${(c2 - c1) * 4}px)`;
+        const cls = "wbar" + (sg.cutL ? " cutl" : "") + (sg.cutR ? " cutr" : "");
+        return `<span class="${cls}" title="${esc(sg.title)}" style="left:${left};width:${width};bottom:${6 + sg.lane * 17}px;background:${esc(sg.color)}">${esc(sg.txt)}</span>`;
       }).join("");
-      const bars = barsFor(k).map((b, j) => `<i class="bar ${b.cls}" style="left:${b.from}%;width:${b.to - b.from}%;bottom:${4 + j * 7}px;background:${esc(b.color)}"></i>`).join("");
-      html += `<button class="${c}" data-k="${k}" aria-label="${esc(fmtLongY.format(d))}"><span class="n">${d.getDate()}</span><span class="tags">${contTags}${tags}</span>${bars}</button>`;
+      let cells = "";
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(ws); d.setDate(ws.getDate() + i);
+        const k = ymd(d), wd = d.getDay();
+        let c = "cell";
+        if (d.getMonth() !== view.getMonth()) c += " out";
+        if (wd === 0 || wd === 6) c += " we";
+        if (isGarde(d)) c += " g";
+        if (d.getTime() === today.getTime()) c += " today";
+        if (k === selected) c += " sel";
+        const tags = events
+          .filter((e) => e.date === k && !SYS_TYPES[e.type] && !e.start)
+          .map((e) => {
+            const t = getType(e.type);
+            const txt = t.short && t.short !== "•" ? t.short : (e.label || t.label).slice(0, 6);
+            return `<span class="tag" style="background:${esc(t.color)}">${esc(txt)}</span>`;
+          }).join("");
+        cells += `<button class="${c}" data-k="${k}" aria-label="${esc(fmtLongY.format(d))}"><span class="n">${d.getDate()}</span><span class="tags">${tags}</span></button>`;
+      }
+      html += `<div class="week" style="--lanes:${nL}">${cells}${bars}</div>`;
     }
     $("grid").innerHTML = html;
     $("legend").innerHTML = `<span><i style="background:var(--accent)"></i>Garde</span>` +
