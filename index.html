@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3550d6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Planning">
+<title>Mon planning</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Mon planning</h1>
+    <button class="navbtn" id="settingsBtn" aria-label="Réglages">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </div>
+  <div class="next glass" id="next"></div>
+  <div class="banner glass" id="banner" hidden></div>
+
+  <div class="monthbar">
+    <button class="navbtn" id="prev" aria-label="Mois précédent">‹</button>
+    <div class="mid"><h2 id="mtitle"></h2><button class="todaybtn" id="gotoday">Aujourd'hui</button></div>
+    <button class="navbtn" id="nextm" aria-label="Mois suivant">›</button>
+  </div>
+  <div class="cal glass">
+    <div class="dows"><div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="day glass" id="day"></div>
+</div>
+
+<div class="cmd">
+  <div class="inner glass">
+    <div class="cmdmsg" id="cmdmsg" hidden></div>
+    <div class="cmdrow">
+      <button class="iconbtn" id="photoBtn" aria-label="Photo du planning" title="Photo du planning">
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      </button>
+      <input type="file" id="photo" accept="image/*" hidden>
+      <textarea id="cmd" rows="1" placeholder="Ex. : nuit le 28 octobre"></textarea>
+      <button class="iconbtn" id="micBtn" aria-label="Dicter" title="Dicter">
+        <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <button class="iconbtn send" id="sendBtn" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden><div class="panel glass" id="panel"></div></div>
+
+<script src="app.js"></script>
+</body>
+</html>
