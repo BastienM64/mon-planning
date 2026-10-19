@@ -8,13 +8,14 @@
   --shadow:0 10px 30px rgba(40,50,120,.12);
   color-scheme:light;
 }
-@media (prefers-color-scheme: dark){:root{
+/* Mode sombre : classe posée par theme.js (auto, clair ou sombre) */
+:root.dark{
   --bg:#12142a; --bg2:#1d1838; --glass:rgba(34,38,72,.62); --glass-line:rgba(255,255,255,.08);
   --fg:#e9eaff; --muted:#9da2c8; --line:#2c3058;
   --accent:#7d92ff; --accent-fg:#10132b; --accent-soft:#283166; --lav:#a89cff;
   --today:#ff9a52; --danger:#ff6b84; --rec:#ff5c75;
   --c-jour:#d99a1e; --c-nuit:#6366e0; --c-smur:#e0506a; --c-repos:#6f7b96; --c-conge:#22a597; --c-perso:#c25bb5; --c-autre:#6a6f93;
-  --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}}
+  --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}
 
 [hidden]{display:none!important}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -116,3 +117,22 @@ h1{font-weight:700;font-size:1.45rem;margin:0;letter-spacing:-.02em}
 .form input[type=color]{padding:3px;height:42px}
 .prow.up .t small{color:var(--accent)}
 .ev .evedit{color:var(--fg);font-size:.9rem;font-weight:400;padding:0;flex:1;min-width:0}
+
+/* v4 : barres horaires, nuits sur deux jours */
+.cell{position:relative;padding-bottom:12px}
+.cell .bar{position:absolute;height:5px;border-radius:3px;opacity:.9;pointer-events:none}
+.cell .bar.b-start{border-radius:3px 0 0 3px;width:auto!important;right:-4px}
+.cell .bar.b-end{border-radius:0 3px 3px 0;left:-4px!important}
+.cell.out .bar{opacity:.5}
+.ev.cont{border-style:dashed}
+
+/* v4 : thèmes */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.sw{border:1px solid var(--line);background:var(--glass);border-radius:14px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.78rem}
+.sw .disc{width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.6)}
+.sw.on{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent);font-weight:700}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px}
+.seg button{flex:1;border:0;background:var(--glass);padding:9px 6px;font-size:.85rem}
+.seg button.on{background:var(--accent);color:var(--accent-fg);font-weight:700}
+.cell .bar{height:6px}
+.tag.cont{opacity:.75}

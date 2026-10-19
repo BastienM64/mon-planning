@@ -9,12 +9,12 @@
   const LS_MODEL = "planning-gemini-model";
   const LS_GARDE_REMIND = "planning-garde-remind";
   const LS_EXPORTED = "planning-exported-v1";
-  const APP_VERSION = "3";
+  const APP_VERSION = "4";
   const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
   const DEFAULT_TYPES = [
     { id: "jour", label: "Jour", short: "J", color: "#e9a227", start: "07:00", end: "19:00", remind: 60 },
-    { id: "nuit", label: "Nuit", short: "N", color: "#4b4fc4", start: "19:00", end: "07:00", remind: 120 },
+    { id: "nuit", label: "Nuit", short: "N", color: "#4b4fc4", start: "20:00", end: "08:00", remind: 120 },
     { id: "smur", label: "SMUR", short: "SMUR", color: "#d1435b", start: "", end: "", remind: 60 },
     { id: "repos", label: "Repos", short: "R", color: "#7d8aa3", start: "", end: "", remind: -1 },
     { id: "conge", label: "Congé", short: "CA", color: "#1f9c8f", start: "", end: "", remind: -1 },
@@ -43,6 +43,25 @@
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
   const lsJson = (k, d) => { try { const v = JSON.parse(lsGet(k, "null")); return v ?? d; } catch (e) { return d; } };
   const newId = (p) => (p || "e") + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const overnight = (e) => !!(e.start && e.end && e.end <= e.start);
+  const dayAfter = (s) => { const d = parse(s); d.setDate(d.getDate() + 1); return ymd(d); };
+  const dayBefore = (s) => { const d = parse(s); d.setDate(d.getDate() - 1); return ymd(d); };
+  const pct = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return Math.round(((h * 60 + m) / 1440) * 1000) / 10; };
+  // Barres horaires d'une case : morceaux des événements de ce jour + suite des nuits commencées la veille
+  function barsFor(k) {
+    const out = [];
+    events.forEach((e) => {
+      if (SYS_TYPES[e.type] || !e.start) return;
+      const t = getType(e.type);
+      if (e.date === k) {
+        if (overnight(e)) out.push({ from: pct(e.start), to: 100, cls: "b-start", color: t.color });
+        else if (e.end) out.push({ from: pct(e.start), to: pct(e.end), cls: "", color: t.color });
+      } else if (overnight(e) && dayAfter(e.date) === k && e.end !== "00:00") {
+        out.push({ from: 0, to: pct(e.end), cls: "b-end", color: t.color });
+      }
+    });
+    return out;
+  }
   const remindLabel = (m) => (REMIND_OPTS.find((o) => o[0] === Number(m)) || [0, Number(m) + " min avant"])[1];
 
   /* ================= État ================= */
@@ -52,6 +71,15 @@
   let events = lsJson(LS_EVENTS, []);
   let types = lsJson(LS_TYPES, null) || DEFAULT_TYPES.map((t) => ({ ...t }));
   if (!Array.isArray(events)) events = [];
+  // Migration : nuits 19h-7h -> 20h-8h (horaires réels de Bastien)
+  if (!lsGet("planning-mig-nuit20", "")) {
+    const tn = types.find((t) => t.id === "nuit");
+    if (tn && tn.start === "19:00" && tn.end === "07:00") { tn.start = "20:00"; tn.end = "08:00"; lsSet(LS_TYPES, JSON.stringify(types)); }
+    let ch = false;
+    events.forEach((e) => { if (e.type === "nuit" && e.start === "19:00" && e.end === "07:00") { e.start = "20:00"; e.end = "08:00"; ch = true; } });
+    if (ch) lsSet(LS_EVENTS, JSON.stringify(events));
+    lsSet("planning-mig-nuit20", "1");
+  }
 
   function save() {
     if (!lsSet(LS_EVENTS, JSON.stringify(events))) showMsg("Impossible d'enregistrer sur ce téléphone (stockage plein ou bloqué).", true);
@@ -119,7 +147,13 @@
           const txt = t.short && t.short !== "•" ? t.short : (e.label || t.label).slice(0, 6);
           return `<span class="tag" style="background:${esc(t.color)}">${esc(txt)}</span>`;
         }).join("");
-      html += `<button class="${c}" data-k="${k}" aria-label="${esc(fmtLongY.format(d))}"><span class="n">${d.getDate()}</span><span class="tags">${tags}</span></button>`;
+      const prevK = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
+      const contTags = events.filter((e) => e.date === prevK && overnight(e) && !SYS_TYPES[e.type] && e.end !== "00:00").map((e) => {
+        const [hh, mm] = e.end.split(":");
+        return `<span class="tag cont" style="background:${esc(getType(e.type).color)}">→${Number(hh)}h${mm !== "00" ? mm : ""}</span>`;
+      }).join("");
+      const bars = barsFor(k).map((b, j) => `<i class="bar ${b.cls}" style="left:${b.from}%;width:${b.to - b.from}%;bottom:${4 + j * 7}px;background:${esc(b.color)}"></i>`).join("");
+      html += `<button class="${c}" data-k="${k}" aria-label="${esc(fmtLongY.format(d))}"><span class="n">${d.getDate()}</span><span class="tags">${contTags}${tags}</span>${bars}</button>`;
     }
     $("grid").innerHTML = html;
     $("legend").innerHTML = `<span><i style="background:var(--accent)"></i>Garde</span>` +
@@ -133,6 +167,8 @@
     let h = `<h3>${esc(fmtLongY.format(d))}</h3>`;
     if (g) h += `<div class="gnote">Week-end avec ton fils</div>`;
     const shown = evs.filter((e) => e.type !== "garde" || !g);
+    const prevK = dayBefore(selected);
+    const conts = events.filter((e) => e.date === prevK && overnight(e) && !SYS_TYPES[e.type]);
     h += shown.length
       ? `<div class="evs">${shown.map((e) => {
           const t = getType(e.type);
@@ -143,7 +179,11 @@
             <${editable ? `button class="t evedit" data-edit="${esc(e.id)}"` : `span class="t"`}>${esc(e.label || t.label)}<small>${esc(t.label)}${time ? " · " + esc(time) : ""}${r >= 0 ? " · 🔔 " + esc(remindLabel(r)) : ""}</small></${editable ? "button" : "span"}>
             <button data-del="${esc(e.id)}">Retirer</button></div>`;
         }).join("")}</div>`
-      : `<p class="empty">Rien de prévu ce jour-là.</p>`;
+      : (conts.length ? "" : `<p class="empty">Rien de prévu ce jour-là.</p>`);
+    if (conts.length) h += `<div class="evs">${conts.map((e) => {
+      const t = getType(e.type);
+      return `<div class="ev cont"><span class="dot" style="background:${esc(t.color)}"></span><button class="t evedit" data-edit="${esc(e.id)}">Fin de ${esc((e.label || t.label).toLowerCase())}<small>Commencée la veille à ${esc(e.start)} · jusqu'à ${esc(e.end)}</small></button></div>`;
+    }).join("")}</div>`;
     h += `<div class="quick">${userTypes().filter((t) => t.id !== "autre").map((t) => `<button class="chipbtn" data-quick="${esc(t.id)}">+ ${esc(t.label)}</button>`).join("")}`;
     if (we) h += g ? `<button class="chipbtn" data-quick="garde_off">Pas de garde</button>` : `<button class="chipbtn" data-quick="garde">+ Garde</button>`;
     h += `<button class="chipbtn" data-form="1">+ Autre…</button></div>`;
@@ -336,6 +376,12 @@
     const gr = lsGet(LS_GARDE_REMIND, "360");
     openSheet(`<div class="sheethead"><h3>Réglages</h3><button class="btn" id="s-close">Fermer</button></div>
 
+      <h4>Apparence</h4>
+      <div class="swatches">${Object.entries(window.PlanningThemes ? window.PlanningThemes.list : {}).map(([id, t]) =>
+        `<button class="sw${id === lsGet("planning-theme", "cobalt") ? " on" : ""}" data-theme="${id}"><span class="disc" style="background:linear-gradient(135deg,${t.l[2]} 50%,${t.l[4]} 50%)"></span>${esc(t.name)}</button>`).join("")}</div>
+      <div class="seg">${[["auto", "Auto"], ["light", "Clair"], ["dark", "Sombre"]].map(([v, l]) =>
+        `<button data-mode="${v}" class="${lsGet("planning-mode", "auto") === v ? "on" : ""}">${l}</button>`).join("")}</div>
+
       <h4>Ce que je prévois</h4>
       <p>Touche un type pour changer son nom, sa couleur, ses horaires ou son rappel.</p>
       <div class="evs">${typesList()}</div>
@@ -371,6 +417,15 @@
       <p class="hintline">Version ${APP_VERSION}</p>`);
 
     $("s-close").onclick = closeSheet;
+    const reTheme = () => { if (window.PlanningThemes) window.PlanningThemes.apply(); };
+    $("panel").querySelectorAll("[data-theme]").forEach((b) => { b.onclick = () => {
+      lsSet("planning-theme", b.dataset.theme); reTheme();
+      $("panel").querySelectorAll("[data-theme]").forEach((x) => x.classList.toggle("on", x === b));
+    }; });
+    $("panel").querySelectorAll("[data-mode]").forEach((b) => { b.onclick = () => {
+      lsSet("planning-mode", b.dataset.mode); reTheme();
+      $("panel").querySelectorAll("[data-mode]").forEach((x) => x.classList.toggle("on", x === b));
+    }; });
     $("panel").querySelectorAll("[data-tedit]").forEach((b) => { b.onclick = () => openTypeForm(types.find((t) => t.id === b.dataset.tedit)); });
     $("s-addtype").onclick = () => openTypeForm(null);
     $("s-gr").onchange = () => lsSet(LS_GARDE_REMIND, $("s-gr").value);

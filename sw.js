@@ -1,6 +1,6 @@
 // Change le numéro de version à chaque mise à jour pour forcer le rafraîchissement
-const CACHE = "planning-v3";
-const FILES = ["./", "index.html", "style.css", "app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
+const CACHE = "planning-v4";
+const FILES = ["./", "index.html", "style.css", "theme.js", "app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
