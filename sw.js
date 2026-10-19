@@ -1,5 +1,5 @@
 // Change le numéro de version à chaque mise à jour pour forcer le rafraîchissement
-const CACHE = "planning-v7";
+const CACHE = "planning-v8";
 const FILES = ["./", "index.html", "style.css", "theme.js", "app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {

@@ -9,7 +9,7 @@
   const LS_MODEL = "planning-gemini-model";
   const LS_GARDE_REMIND = "planning-garde-remind";
   const LS_EXPORTED = "planning-exported-v1";
-  const APP_VERSION = "7";
+  const APP_VERSION = "8";
   const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
   const DEFAULT_TYPES = [
@@ -131,7 +131,7 @@
     const start = new Date(view); start.setDate(1 - off);
     const mins = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
     // Événements avec horaire -> segments continus (en jours depuis le lundi de la semaine)
-    const timed = events.filter((e) => !SYS_TYPES[e.type] && e.start);
+    const timed = events.filter((e) => !SYS_TYPES[e.type]);
     let html = "";
     for (let w = 0; w < 6; w++) {
       const ws = new Date(start); ws.setDate(start.getDate() + w * 7);
@@ -141,17 +141,17 @@
       for (const e of timed) {
         const d = parse(e.date);
         const off0 = Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - wsUTC) / 864e5);
-        const s0 = mins(e.start);
-        let e0 = e.end ? mins(e.end) : Math.min(s0 + 60, 1440);
-        if (e.end && e0 <= s0) e0 += 1440; // passe minuit
+        const s0 = e.start ? mins(e.start) : 0;
+        let e0 = e.start && e.end ? mins(e.end) : 0;
+        if (e.start && e.end && e0 <= s0) e0 += 1440; // passe minuit
         // Échelle visuelle (pas horaire) : une garde qui passe minuit va du milieu de la case du soir
         // au milieu de la case du lendemain ; une garde dans la journée remplit sa case.
-        const x1 = e0 > 1440 ? off0 + 0.52 : off0 + 0.06;
-        const x2 = e0 > 1440 ? off0 + 1.48 : off0 + 0.94;
+        const x1 = e0 > 1440 ? off0 + 0.52 : off0 + 0.04;
+        const x2 = e0 > 1440 ? off0 + 1.48 : off0 + 0.96;
         if (x2 <= 0 || x1 >= 7) continue;
         const t = getType(e.type);
         segs.push({ x1: Math.max(0, x1), x2: Math.min(7, x2), cutL: x1 < 0, cutR: x2 > 7, color: t.color,
-          txt: t.short && t.short !== "•" ? t.short : (e.label || t.label).slice(0, 8), title: (e.label || t.label) + " " + e.start + (e.end ? "–" + e.end : "") });
+          txt: t.short && t.short !== "•" ? t.short : (e.label || t.label).slice(0, 8), title: (e.label || t.label) + (e.start ? " " + e.start + (e.end ? "–" + e.end : "") : "") });
       }
       segs.sort((p, q) => p.x1 - q.x1 || q.x2 - p.x2);
       const lanes = [];
@@ -179,14 +179,7 @@
         if (isGarde(d)) c += " g";
         if (d.getTime() === today.getTime()) c += " today";
         if (k === selected) c += " sel";
-        const tags = events
-          .filter((e) => e.date === k && !SYS_TYPES[e.type] && !e.start)
-          .map((e) => {
-            const t = getType(e.type);
-            const txt = t.short && t.short !== "•" ? t.short : (e.label || t.label).slice(0, 6);
-            return `<span class="tag" style="background:${esc(t.color)}">${esc(txt)}</span>`;
-          }).join("");
-        cells += `<button class="${c}" data-k="${k}" aria-label="${esc(fmtLongY.format(d))}"><span class="n">${d.getDate()}</span><span class="tags">${tags}</span></button>`;
+        cells += `<button class="${c}" data-k="${k}" aria-label="${esc(fmtLongY.format(d))}"><span class="n">${d.getDate()}</span></button>`;
       }
       html += `<div class="week" style="--lanes:${nL}">${cells}${bars}</div>`;
     }

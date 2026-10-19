@@ -151,3 +151,4 @@ h1{font-weight:700;font-size:1.45rem;margin:0;letter-spacing:-.02em}
 .wbar{height:22px;line-height:22px;border-radius:11px;font-size:.74rem;padding:0 7px}
 @media (max-width:420px){.wbar{font-size:.7rem;padding:0 6px}}
 .wbar{text-align:center}
+.wbar{padding:0 3px}
