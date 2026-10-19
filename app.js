@@ -9,7 +9,7 @@
   const LS_MODEL = "planning-gemini-model";
   const LS_GARDE_REMIND = "planning-garde-remind";
   const LS_EXPORTED = "planning-exported-v1";
-  const APP_VERSION = "5";
+  const APP_VERSION = "6";
   const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
   const DEFAULT_TYPES = [
@@ -164,7 +164,7 @@
         const left = pos(sg.x1);
         const width = `calc((100% - 24px) * ${((sg.x2 - sg.x1) / 7).toFixed(5)} + ${(c2 - c1) * 4}px)`;
         const cls = "wbar" + (sg.cutL ? " cutl" : "") + (sg.cutR ? " cutr" : "");
-        return `<span class="${cls}" title="${esc(sg.title)}" style="left:${left};width:${width};bottom:${6 + sg.lane * 17}px;background:${esc(sg.color)}">${esc(sg.txt)}</span>`;
+        return `<span class="${cls}" title="${esc(sg.title)}" style="left:${left};width:${width};bottom:${6 + sg.lane * 25}px;background:${esc(sg.color)}">${esc(sg.txt)}</span>`;
       }).join("");
       let cells = "";
       for (let i = 0; i < 7; i++) {
