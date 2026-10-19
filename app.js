@@ -9,6 +9,7 @@
   const LS_MODEL = "planning-gemini-model";
   const LS_GARDE_REMIND = "planning-garde-remind";
   const LS_EXPORTED = "planning-exported-v1";
+  const APP_VERSION = "3";
   const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
   const DEFAULT_TYPES = [
@@ -366,7 +367,8 @@
         <button class="btn" id="s-import">Importer</button>
         <input type="file" id="s-file" accept="application/json,.json" hidden>
       </div>
-      <p id="s-bmsg"></p>`);
+      <p id="s-bmsg"></p>
+      <p class="hintline">Version ${APP_VERSION}</p>`);
 
     $("s-close").onclick = closeSheet;
     $("panel").querySelectorAll("[data-tedit]").forEach((b) => { b.onclick = () => openTypeForm(types.find((t) => t.id === b.dataset.tedit)); });
@@ -633,5 +635,16 @@ Réponds uniquement avec un objet JSON de cette forme :
   }
   render(); updateBanner();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-  if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  if ("serviceWorker" in navigator) {
+    // Mise à jour automatique : on vérifie à chaque ouverture et on recharge quand une nouvelle version est prête
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+        reg.update().catch(() => {});
+        document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
+      }).catch(() => {});
+    });
+  }
 })();
